@@ -15,6 +15,10 @@ type MarshalOptions struct {
 	// If this is true, then all struct names will be stripped from objects
 	// and "stdClass" will be used instead. The default value is false.
 	OnlyStdClass bool
+
+	// If this is true, Golang structs will be serialized into PHP arrays.
+	// The default value is false.
+	StructsAsArrays bool
 }
 
 // DefaultMarshalOptions will create a new instance of MarshalOptions with
@@ -22,6 +26,7 @@ type MarshalOptions struct {
 func DefaultMarshalOptions() *MarshalOptions {
 	options := new(MarshalOptions)
 	options.OnlyStdClass = false
+	options.StructsAsArrays = false
 
 	return options
 }
@@ -186,13 +191,17 @@ func MarshalStruct(input interface{}, options *MarshalOptions) ([]byte, error) {
 		buffer.Write(m)
 	}
 
-	className := reflect.ValueOf(input).Type().Name()
-	if options.OnlyStdClass {
-		className = "stdClass"
-	}
+	if options.StructsAsArrays {
+		return []byte(fmt.Sprintf("a:%d:{%s}", visibleFieldCount, buffer.String())), nil
+	} else {
+		className := reflect.ValueOf(input).Type().Name()
+		if options.OnlyStdClass {
+			className = "stdClass"
+		}
 
-	return []byte(fmt.Sprintf("O:%d:\"%s\":%d:{%s}", len(className),
-		className, visibleFieldCount, buffer.String())), nil
+		return []byte(fmt.Sprintf("O:%d:\"%s\":%d:{%s}", len(className),
+			className, visibleFieldCount, buffer.String())), nil
+	}
 }
 
 // Marshal is the canonical way to perform the equivalent of serialize() in PHP.
